@@ -9,17 +9,20 @@ Smart Lock
 #include "mbed.h" 
 #include "NHD_0216HZ.h"
 #include <string>
+#include "Servo.h"
 
-#define SIZE 2
+#define SIZE 4
 
-int default_combination[SIZE] = { 0,0 };
+int default_combination[SIZE] = { 0,0,0,0 };
 int user_combination[SIZE] = {};
 int volatile bitmode = 0;
 
-AnalogIn meter1(A0);
-AnalogIn meter2(A1);
-InterruptIn enter(D2);
-InterruptIn reset(D3);
+AnalogIn meter1(A4); //PA_0
+AnalogIn meter2(A2); //PA_1
+AnalogIn meter3(A0); //PC_0
+AnalogIn meter4(A1); //PC_1 
+InterruptIn enter(D2); //PA_10
+InterruptIn reset(D3); //PC_3
 
 int checkCombinationStatus(int comb[], int ent[], int bit) {
     switch(bit) {
@@ -27,11 +30,18 @@ int checkCombinationStatus(int comb[], int ent[], int bit) {
         case 1:
             for(int i = 0; i < SIZE; i++) {
                 if(comb[i] != ent[i]) {
-                    print_lcd("Incorrect");
+                    set_cursor(0, 1);
+                    print_lcd("Incorrect: ");
+                    for(int j = 5; j > 0; j--) {
+                        printf("%d\n", j);
+                        print_lcd(to_string(j).c_str());
+                        ThisThread::sleep_for(1000);
+                    }
                     ThisThread::sleep_for(400);
                     return 0;
                 }
             }
+            set_cursor(0, 1);
             print_lcd("Correct");
             ThisThread::sleep_for(1000);
             return 0;
@@ -42,6 +52,7 @@ int checkCombinationStatus(int comb[], int ent[], int bit) {
                 comb[i] = ent[i]; 
             }
             bit = 0; 
+            set_cursor(0, 1);
             print_lcd("Set");
             ThisThread::sleep_for(1000);
             return 0;
@@ -94,19 +105,26 @@ int mapVal(float m1) {
 int main() {     
     init_spi();
     init_lcd();
-    set_cursor(0, 1);
     enter.rise(enter_ISR);
     reset.rise(reset_ISR);
     while(true) {
-        printf("m1: %d, m2: %d\n", mapVal(meter1.read()), mapVal(meter2.read()));
+        printf("%d %d %d %d\n", mapVal(meter1.read()), mapVal(meter2.read()), mapVal(meter3.read()), mapVal(meter4.read()));
         int potMap = mapVal(meter1.read());
         int potMap2 = mapVal(meter2.read());   
+        int potMap3 = mapVal(meter3.read());   
+        int potMap4 = mapVal(meter4.read());   
+
         user_combination[0] = potMap;
         user_combination[1] = potMap2;
+        user_combination[2] = potMap3;
+        user_combination[3] = potMap4;
 
         char const* pchar = to_string(potMap).c_str();
         char const* pchar2 = to_string(potMap2).c_str();
-    
+        char const* pchar3 = to_string(potMap3).c_str();
+        char const* pchar4 = to_string(potMap4).c_str();
+        std::string s = (to_string(potMap) + to_string(potMap2) + to_string(potMap3) + to_string(potMap4));
+        print_lcd(s.c_str());
         bitmode = checkCombinationStatus(default_combination, user_combination, bitmode);
         ThisThread::sleep_for(300); 
         write_cmd(0x01);
