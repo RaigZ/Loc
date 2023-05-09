@@ -16,13 +16,16 @@ Smart Lock
 int default_combination[SIZE] = { 0,0,0,0 };
 int user_combination[SIZE] = {};
 int volatile bitmode = 0;
-
+bool enterBit = 0; 
 AnalogIn meter1(A4); //PA_0
 AnalogIn meter2(A2); //PA_1
 AnalogIn meter3(A0); //PC_0
 AnalogIn meter4(A1); //PC_1 
 InterruptIn enter(D2); //PA_10
 InterruptIn reset(D3); //PC_3
+Servo servo(D4);   
+DigitalOut red(D5);
+DigitalOut green(D8);    
 
 int checkCombinationStatus(int comb[], int ent[], int bit) {
     switch(bit) {
@@ -32,30 +35,47 @@ int checkCombinationStatus(int comb[], int ent[], int bit) {
                 if(comb[i] != ent[i]) {
                     set_cursor(0, 1);
                     print_lcd("Incorrect: ");
+                    red = 1;
+                    printf("red: %d\n", (int)red);
                     for(int j = 5; j > 0; j--) {
                         printf("%d\n", j);
                         print_lcd(to_string(j).c_str());
                         ThisThread::sleep_for(1000);
                     }
                     ThisThread::sleep_for(400);
+                    red = 0;
+                    printf("red: %d\n", (int)red);
                     return 0;
                 }
             }
+            enterBit = 1;
+            green = 1;
+            printf("green: %d\n", (int)green);
             set_cursor(0, 1);
             print_lcd("Correct");
+            servo.write(90);
             ThisThread::sleep_for(1000);
-            return 0;
+            servo.write(-90);
+            green = 0;
+            printf("green: %d\n", (int)green);
             break;
         // reset
         case 2:
-            for(int i = 0; i < SIZE; i++) {
-                comb[i] = ent[i]; 
+            if(enterBit) {
+                for(int i = 0; i < SIZE; i++) {
+                    comb[i] = ent[i]; 
+                }
+                enterBit = 0; 
+                set_cursor(0, 1);
+                print_lcd("Set");            
+                ThisThread::sleep_for(1000);
             }
-            bit = 0; 
-            set_cursor(0, 1);
-            print_lcd("Set");
-            ThisThread::sleep_for(1000);
-            return 0;
+            else {
+                set_cursor(0, 1);
+                print_lcd("Cannot Set");
+                printf("Cannot Set"); 
+                ThisThread::sleep_for(1000);
+            }
     }
     return 0;
 }
@@ -107,6 +127,8 @@ int main() {
     init_lcd();
     enter.rise(enter_ISR);
     reset.rise(reset_ISR);
+    servo.attach(SERVO_POS_CENTER);
+    
     while(true) {
         printf("%d %d %d %d\n", mapVal(meter1.read()), mapVal(meter2.read()), mapVal(meter3.read()), mapVal(meter4.read()));
         int potMap = mapVal(meter1.read());
@@ -119,6 +141,7 @@ int main() {
         user_combination[2] = potMap3;
         user_combination[3] = potMap4;
 
+        printf("SERVO: %d\n", servo.read());
         char const* pchar = to_string(potMap).c_str();
         char const* pchar2 = to_string(potMap2).c_str();
         char const* pchar3 = to_string(potMap3).c_str();
