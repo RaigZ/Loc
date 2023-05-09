@@ -35,6 +35,7 @@ int checkCombinationStatus(int comb[], int ent[], int bit) {
                 if(comb[i] != ent[i]) {
                     set_cursor(0, 1);
                     print_lcd("Incorrect: ");
+                    enterBit = 0;
                     red = 1;
                     printf("red: %d\n", (int)red);
                     for(int j = 5; j > 0; j--) {
@@ -69,11 +70,12 @@ int checkCombinationStatus(int comb[], int ent[], int bit) {
                 set_cursor(0, 1);
                 print_lcd("Set");            
                 ThisThread::sleep_for(1000);
+                break;
             }
             else {
                 set_cursor(0, 1);
                 print_lcd("Cannot Set");
-                printf("Cannot Set"); 
+                printf("Cannot Set\n"); 
                 ThisThread::sleep_for(1000);
             }
     }
